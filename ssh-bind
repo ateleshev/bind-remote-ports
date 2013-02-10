@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+#
+# @author  Artem Teleshev
+# @email   artem.teleshev@gmail.com
+# @site    http//phpsw.net
+
+NAME=$(basename $0)
+DESC="SSH-Forwarding of ports"
+SCRIPT=$(readlink -f $0)
+SCRIPT_PATH=$(dirname $SCRIPT)
+SETTINGS_PATH="$SCRIPT_PATH/settings/"
+
+COMMAND=$(which ssh)
+COMMAND_OPTIONS="-L"
+COMMAND_DEFAULT_OPTIONS="-f -n -N"
+
+LS_COMMAND=$(which ls)
+PS_COMMAND=$(which ps)
+TR_COMMAND=$(which tr)
+WC_COMMAND=$(which wc)
+CAT_COMMAND=$(which cat)
+AWK_COMMAND=$(which awk)
+SED_COMMAND=$(which sed)
+GREP_COMMAND=$(which grep)
+KILL_COMMAND=$(which kill)
+
+STATUS_OK="OK"
+STATUS_ERROR="Error"
+
+ssh_bind_is_root()  { # {{{
+  if [ "$UID" != 0 ] ; then
+    echo "Only super user have access to this action"
+    exit 1
+  fi
+} # }}}
+
+ssh_bind_get_settings() { # {{{
+  $LS_COMMAND $SETTINGS_PATH
+} # }}}
+
+ssh_bind_count_settings() { # {{{
+  ssh_bind_get_settings | $WC_COMMAND -l
+} # }}}
+
+ssh_bind_get_settings_list() { # {{{
+  ssh_bind_get_settings | $TR_COMMAND "\n" " "
+} # }}}
+
+ssh_bind_get_settings_pattern() { # {{{
+  ssh_bind_get_settings | $TR_COMMAND "\n" "|" | $SED_COMMAND 's/|$//g' | $SED_COMMAND 's/|/\\|/g'
+} # }}}
+
+ssh_bind_get_setting_forwardings() { # {{{
+  $CAT_COMMAND "$SETTINGS_PATH/$1" | $TR_COMMAND -d " " | $GREP_COMMAND -v "^#"
+} # }}}
+
+ssh_bind_show_command_create_ssh_forwarding() { # {{{
+  echo "$COMMAND $COMMAND_DEFAULT_OPTIONS $COMMAND_OPTIONS $1 $2"
+} # }}}
+
+ssh_bind_create_ssh_forwarding() { # {{{
+  $COMMAND $COMMAND_DEFAULT_OPTIONS $COMMAND_OPTIONS $1 $2
+} # }}}
+
+ssh_bind_get_ps() { # {{{
+  #ssh_bind_get_settings_pattern
+  $PS_COMMAND ax | $GREP_COMMAND "$COMMAND $COMMAND_DEFAULT_OPTIONS $COMMAND_OPTIONS " | $GREP_COMMAND -v "$GREP_COMMAND" | $GREP_COMMAND "$(ssh_bind_get_settings_pattern)"
+} # }}}
+
+ssh_bind_count_ps() { # {{{
+  ssh_bind_get_ps | $WC_COMMAND -l
+} # }}}
+
+ssh_bind_get_ps_list() { # {{{
+  ssh_bind_get_ps | $AWK_COMMAND '{print $1}' | $TR_COMMAND "\n" " "
+} # }}}
+
+ssh_bind_start() { #{{{
+  ssh_bind_is_root
+  if [ "$(ssh_bind_count_ps)" == "0" ] ; then
+    echo -n "Starting $NAME "
+    for SETTING in $(ssh_bind_get_settings)
+    do
+      for FORWARDING in $(ssh_bind_get_setting_forwardings $SETTING)
+      do
+        ssh_bind_create_ssh_forwarding $FORWARDING $SETTING
+        echo -n "."
+      done
+    done
+    echo " [$STATUS_OK]"
+  else
+    echo "Is already found $DESC in Your system."
+    ssh_bind_status
+  fi
+} # }}}
+
+ssh_bind_stop() { # {{{
+  ssh_bind_is_root
+  if [ "$(ssh_bind_count_ps)" == "0" ] ; then
+    echo "$NAME was not started"
+  else
+    echo -n "Stoping $NAME ... ["
+    $KILL_COMMAND $(ssh_bind_get_ps_list) && echo -n "$STATUS_OK" || echo -n "$STATUS_ERROR"
+    echo "]"
+  fi
+} # }}}
+
+ssh_bind_status() { # {{{
+  if [ "$(ssh_bind_count_ps)" == "0" ] ; then
+    echo "$NAME was not started"
+  else
+    echo "Found started processes: $(ssh_bind_get_ps_list)"
+    ssh_bind_get_ps
+  fi
+} # }}}
+
+ssh_bind_settings() { # {{{
+  for SETTING in $(ssh_bind_get_settings)
+  do
+    for FORWARDING in $(ssh_bind_get_setting_forwardings $SETTING)
+    do
+      ssh_bind_show_command_create_ssh_forwarding $FORWARDING $SETTING
+    done
+  done
+} # }}}
+
+ssh_bind_help() { # {{{
+  HELP_SEPARATOR="+----------+--------------------------------------------+"
+  echo "$NAME: Help"
+  echo "  $HELP_SEPARATOR"
+  echo "  | start    | initialize $DESC"
+  echo "  $HELP_SEPARATOR"
+  echo "  | stop     | shutdown $DESC"
+  echo "  $HELP_SEPARATOR"
+  echo "  | restart  | restart $DESC"
+  echo "  $HELP_SEPARATOR"
+  echo "  | status   | show status of $DESC"
+  echo "  $HELP_SEPARATOR"
+  echo "  | settings | show settings of $DESC"
+  echo "  $HELP_SEPARATOR"
+  echo "  | help     | show this message"
+  echo "  $HELP_SEPARATOR"
+} # }}}
+
+
+if [ "$(ssh_bind_count_settings)" == "0" ] ; then
+  echo "Can't found settings for $NAME"
+  exit 2
+fi
+
+case "$1" in # {{{
+  start)
+    ssh_bind_start
+    ;;
+  stop)
+    ssh_bind_stop
+    ;;
+  restart)
+    ssh_bind_stop
+    sleep 1
+    ssh_bind_start
+    ;;
+  status)
+    ssh_bind_status
+    ;;
+  settings)
+    ssh_bind_settings
+    ;;
+  help)
+    ssh_bind_help
+    ;;
+  *)
+    echo "Usage: $NAME {start|stop|restart|status|settings|help}"
+    exit 3
+    ;;
+esac # }}}
+
+exit 0
