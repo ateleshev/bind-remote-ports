@@ -6,6 +6,8 @@
 
 NAME=$(basename $0)
 DESC="SSH-Forwarding of ports"
+AUTHOR="Artem Teleshev"
+VERSION="1.0.0"
 SCRIPT=$(readlink -f $0)
 SCRIPT_PATH=$(dirname $SCRIPT)
 SETTINGS_PATH="$SCRIPT_PATH/settings/"
@@ -126,7 +128,8 @@ ssh_bind_settings() { # {{{
 
 ssh_bind_help() { # {{{
   HELP_SEPARATOR="+----------+--------------------------------------------+"
-  echo "$NAME: Help"
+  echo " Author: $AUTHOR"
+  echo " Version: $VERSION"
   echo "  $HELP_SEPARATOR"
   echo "  | start    | initialize $DESC"
   echo "  $HELP_SEPARATOR"
