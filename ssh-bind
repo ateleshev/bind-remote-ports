@@ -13,8 +13,7 @@ SCRIPT_PATH=$(dirname $SCRIPT)
 SETTINGS_PATH="$SCRIPT_PATH/settings/"
 
 COMMAND=$(which ssh)
-COMMAND_OPTIONS="-L"
-COMMAND_DEFAULT_OPTIONS="-f -n -N"
+COMMAND_OPTIONS="-f -n -N"
 
 LS_COMMAND=$(which ls)
 PS_COMMAND=$(which ps)
@@ -56,17 +55,20 @@ ssh_bind_get_setting_forwardings() { # {{{
   $CAT_COMMAND "$SETTINGS_PATH/$1" | $TR_COMMAND -d " " | $GREP_COMMAND -v "^#"
 } # }}}
 
+ssh_bind_option_forwarding() { # {{{
+  echo $1 | $SED_COMMAND 's/^socks:/-D /g' | $SED_COMMAND 's/^local:/-L /g' | $SED_COMMAND 's/^remote:/-R /g'
+} # }}}
+
 ssh_bind_show_command_create_ssh_forwarding() { # {{{
-  echo "$COMMAND $COMMAND_DEFAULT_OPTIONS $COMMAND_OPTIONS $1 $2"
+  echo "$COMMAND $COMMAND_OPTIONS $(ssh_bind_option_forwarding $1) $2"
 } # }}}
 
 ssh_bind_create_ssh_forwarding() { # {{{
-  $COMMAND $COMMAND_DEFAULT_OPTIONS $COMMAND_OPTIONS $1 $2
+  $COMMAND $COMMAND_OPTIONS $(ssh_bind_option_forwarding $1) $2
 } # }}}
 
 ssh_bind_get_ps() { # {{{
-  #ssh_bind_get_settings_pattern
-  $PS_COMMAND ax | $GREP_COMMAND "$COMMAND $COMMAND_DEFAULT_OPTIONS $COMMAND_OPTIONS " | $GREP_COMMAND -v "$GREP_COMMAND" | $GREP_COMMAND "$(ssh_bind_get_settings_pattern)"
+  $PS_COMMAND ax | $GREP_COMMAND "$COMMAND $COMMAND_OPTIONS " | $GREP_COMMAND -v "$GREP_COMMAND" | $GREP_COMMAND $(ssh_bind_get_settings_pattern)
 } # }}}
 
 ssh_bind_count_ps() { # {{{
@@ -85,7 +87,7 @@ ssh_bind_start() { #{{{
     do
       for FORWARDING in $(ssh_bind_get_setting_forwardings $SETTING)
       do
-        ssh_bind_create_ssh_forwarding $FORWARDING $SETTING
+        ssh_bind_create_ssh_forwarding "$FORWARDING" "$SETTING"
         echo -n "."
       done
     done
@@ -121,7 +123,7 @@ ssh_bind_settings() { # {{{
   do
     for FORWARDING in $(ssh_bind_get_setting_forwardings $SETTING)
     do
-      ssh_bind_show_command_create_ssh_forwarding $FORWARDING $SETTING
+      ssh_bind_show_command_create_ssh_forwarding "$FORWARDING" "$SETTING"
     done
   done
 } # }}}
