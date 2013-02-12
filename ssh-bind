@@ -14,7 +14,13 @@ SCRIPT_PATH=$(dirname $SCRIPT)
 SETTINGS_PATH=$(readlink -f "$SCRIPT_PATH/settings")
 
 COMMAND=$(which ssh)
-COMMAND_OPTIONS="-f -n -N"
+COMMAND_OPTIONS="-f -n -N -C"
+
+# ssh
+# -f | Requests ssh to go to background just before command execution. 
+# -n | Redirects stdin from /dev/null (actually, prevents reading from stdin).  This must be used when ssh is run in the background.
+# -N | Do not execute a remote command.
+# -C | Compression of all data.
 
 if [ ! -f $COMMAND ] ; then
   echo "Can't find SSH Client. You need to install this package."
