@@ -7,10 +7,10 @@
 NAME=$(basename $0)
 DESC="SSH-Forwarding of ports"
 AUTHOR="Artem Teleshev"
-VERSION="1.0.0"
+VERSION="1.0.1"
 SCRIPT=$(readlink -f $0)
 SCRIPT_PATH=$(dirname $SCRIPT)
-SETTINGS_PATH="$SCRIPT_PATH/settings/"
+SETTINGS_PATH=$(readlink -f "$SCRIPT_PATH/settings")
 
 COMMAND=$(which ssh)
 COMMAND_OPTIONS="-f -n -N"
@@ -24,6 +24,10 @@ AWK_COMMAND=$(which awk)
 SED_COMMAND=$(which sed)
 GREP_COMMAND=$(which grep)
 KILL_COMMAND=$(which kill)
+SORT_COMMAND=$(which sort)
+
+ALLOWED='socks\|local\|remote'
+SETTINGS_PATTERN='\/\?\([^\/]\+\/\)*\([^\:]\+\)*\(.*\)*$'
 
 STATUS_OK="OK"
 STATUS_ERROR="Error"
@@ -36,43 +40,35 @@ ssh_bind_is_root()  { # {{{
 } # }}}
 
 ssh_bind_get_settings() { # {{{
-  $LS_COMMAND $SETTINGS_PATH
+  $GREP_COMMAND -RH "^\($ALLOWED\)" $SETTINGS_PATH | $SED_COMMAND -n "s/$SETTINGS_PATTERN/\2/p" | $SORT_COMMAND -u
 } # }}}
 
 ssh_bind_count_settings() { # {{{
-  ssh_bind_get_settings | $WC_COMMAND -l
+  ssh_bind_get_settings | $WC_COMMAND -l | $TR_COMMAND -d " "
 } # }}}
 
-ssh_bind_get_settings_list() { # {{{
-  ssh_bind_get_settings | $TR_COMMAND "\n" " "
+ssh_bind_get_forwardings() { # {{{
+  $GREP_COMMAND -RH "^\($ALLOWED\)" $SETTINGS_PATH | $SED_COMMAND -n "s/$SETTINGS_PATTERN/\3 \2/p" | $SORT_COMMAND -u | $SED_COMMAND 's/^:socks:/-D /g' | $SED_COMMAND 's/^:local:/-L /g' | $SED_COMMAND 's/^:remote:/-R /g'
 } # }}}
 
-ssh_bind_get_settings_pattern() { # {{{
-  ssh_bind_get_settings | $TR_COMMAND "\n" "|" | $SED_COMMAND 's/|$//g' | $SED_COMMAND 's/|/\\|/g'
-} # }}}
-
-ssh_bind_get_setting_forwardings() { # {{{
-  $CAT_COMMAND "$SETTINGS_PATH/$1" | $TR_COMMAND -d " " | $GREP_COMMAND -v "^#"
-} # }}}
-
-ssh_bind_option_forwarding() { # {{{
-  echo $1 | $SED_COMMAND 's/^socks:/-D /g' | $SED_COMMAND 's/^local:/-L /g' | $SED_COMMAND 's/^remote:/-R /g'
+ssh_bind_get_forwardings_pattern() { # {{{
+  ssh_bind_get_forwardings | $AWK_COMMAND --field-separator "\n" '{print "\\("$1"\\)\\|"}' | $TR_COMMAND -d "\n" | $SED_COMMAND 's/\\|$//g'
 } # }}}
 
 ssh_bind_show_command_create_ssh_forwarding() { # {{{
-  echo "$COMMAND $COMMAND_OPTIONS $(ssh_bind_option_forwarding $1) $2"
+  echo "$COMMAND $COMMAND_OPTIONS $1"
 } # }}}
 
 ssh_bind_create_ssh_forwarding() { # {{{
-  $COMMAND $COMMAND_OPTIONS $(ssh_bind_option_forwarding $1) $2
+  $COMMAND $COMMAND_OPTIONS $1
 } # }}}
 
 ssh_bind_get_ps() { # {{{
-  $PS_COMMAND ax | $GREP_COMMAND "$COMMAND $COMMAND_OPTIONS " | $GREP_COMMAND -v "$GREP_COMMAND" | $GREP_COMMAND $(ssh_bind_get_settings_pattern)
+  $PS_COMMAND ax | $GREP_COMMAND "$COMMAND $COMMAND_OPTIONS " | $GREP_COMMAND -v "$GREP_COMMAND" | $GREP_COMMAND "$(ssh_bind_get_forwardings_pattern)"
 } # }}}
 
 ssh_bind_count_ps() { # {{{
-  ssh_bind_get_ps | $WC_COMMAND -l
+  ssh_bind_get_ps | $WC_COMMAND -l | $TR_COMMAND -d " "
 } # }}}
 
 ssh_bind_get_ps_list() { # {{{
@@ -83,13 +79,9 @@ ssh_bind_start() { #{{{
   ssh_bind_is_root
   if [ "$(ssh_bind_count_ps)" == "0" ] ; then
     echo -n "Starting $NAME "
-    for SETTING in $(ssh_bind_get_settings)
-    do
-      for FORWARDING in $(ssh_bind_get_setting_forwardings $SETTING)
-      do
-        ssh_bind_create_ssh_forwarding "$FORWARDING" "$SETTING"
-        echo -n "."
-      done
+    ssh_bind_get_forwardings | while read FORWARDING ; do
+      ssh_bind_create_ssh_forwarding "$FORWARDING"
+      echo -n "."
     done
     echo " [$STATUS_OK]"
   else
@@ -119,12 +111,8 @@ ssh_bind_status() { # {{{
 } # }}}
 
 ssh_bind_settings() { # {{{
-  for SETTING in $(ssh_bind_get_settings)
-  do
-    for FORWARDING in $(ssh_bind_get_setting_forwardings $SETTING)
-    do
-      ssh_bind_show_command_create_ssh_forwarding "$FORWARDING" "$SETTING"
-    done
+  ssh_bind_get_forwardings | while read FORWARDING ; do
+    ssh_bind_show_command_create_ssh_forwarding "$FORWARDING"
   done
 } # }}}
 
@@ -146,7 +134,6 @@ ssh_bind_help() { # {{{
   echo "  | help     | show this message"
   echo "  $HELP_SEPARATOR"
 } # }}}
-
 
 if [ "$(ssh_bind_count_settings)" == "0" ] ; then
   echo "Can't found settings for $NAME"
