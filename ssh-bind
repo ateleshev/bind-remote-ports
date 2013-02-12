@@ -41,7 +41,7 @@ STATUS_ERROR="Error"
 ssh_bind_is_root()  { # {{{
   if [ "$UID" != 0 ] ; then
     echo "Only super user have access to this action"
-    exit 1
+    exit 2
   fi
 } # }}}
 
@@ -143,7 +143,7 @@ ssh_bind_help() { # {{{
 
 if [ "$(ssh_bind_count_settings)" == "0" ] ; then
   echo "Can't found settings for $NAME"
-  exit 2
+  exit 3
 fi
 
 case "$1" in # {{{
@@ -169,7 +169,7 @@ case "$1" in # {{{
     ;;
   *)
     echo "Usage: $NAME {start|stop|restart|status|settings|help}"
-    exit 3
+    exit 4
     ;;
 esac # }}}
 
