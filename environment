@@ -4,6 +4,9 @@
 # @email   artem.teleshev@gmail.com
 # @site    http//phpsw.net
 
+# Define default fields separator
+FS="\n"
+
 EXIT_STATUS_OK=0
 EXIT_STATUS_NOT_HAVE_CONFIGURED_SETTINGS=1
 
@@ -35,6 +38,7 @@ GREP_COMMAND=$(which grep)
 KILL_COMMAND=$(which kill)
 SORT_COMMAND=$(which sort)
 
-ALLOWED='socks\|local\|remote'
-PATTERN='^\/\?\([^\/]\+\/\)*\([^\:]\+\)*\(.*\)*$'
+SETTINGS_PATTERN=".*\/\([^@]*@[^:]*\)*:\(.*\)$"
+ALLOWED_FORWARDINGS='socks:\|local:\|remote:'
+FORWARDINGS_REPLACEMENT="s/^socks:/-D /g;s/^local:/-L /g;s/^remote:/-R /g"
 
