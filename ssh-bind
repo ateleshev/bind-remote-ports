@@ -13,86 +13,13 @@ SCRIPT=$(readlink -f $0)
 SCRIPT_PATH=$(dirname $SCRIPT)
 SETTINGS_PATH=$(readlink -f "$SCRIPT_PATH/settings")
 
-COMMAND=$(which ssh)
-COMMAND_OPTIONS="-f -n -N -C"
+# Include {{{
+  # Environment
+  . "$SCRIPT_PATH/environment"
 
-# ssh
-# -f | Requests ssh to go to background just before command execution. 
-# -n | Redirects stdin from /dev/null (actually, prevents reading from stdin).  This must be used when ssh is run in the background.
-# -N | Do not execute a remote command.
-# -C | Compression of all data.
-
-if [ ! -f $COMMAND ] ; then
-  echo "Can't find SSH Client. You need to install this package."
-  exit 1
-fi
-
-LS_COMMAND=$(which ls)
-PS_COMMAND=$(which ps)
-TR_COMMAND=$(which tr)
-WC_COMMAND=$(which wc)
-CAT_COMMAND=$(which cat)
-AWK_COMMAND=$(which awk)
-SED_COMMAND=$(which sed)
-GREP_COMMAND=$(which grep)
-KILL_COMMAND=$(which kill)
-SORT_COMMAND=$(which sort)
-
-ALLOWED='socks\|local\|remote'
-PATTERN='^\/\?\([^\/]\+\/\)*\([^\:]\+\)*\(.*\)*$'
-
-STATUS_OK="OK"
-STATUS_ERROR="Error"
-
-ssh_bind_is_root()  { # {{{
-  if [ "$UID" != 0 ] ; then
-    echo "Only super user have access to this action"
-    exit 2
-  fi
-} # }}}
-
-ssh_bind_get_settings() { # {{{
-  $GREP_COMMAND -RH "^\($ALLOWED\)" $SETTINGS_PATH | $SED_COMMAND -n "s/$PATTERN/\2/p" | $SORT_COMMAND -u
-} # }}}
-
-ssh_bind_count_settings() { # {{{
-  ssh_bind_get_settings | $WC_COMMAND -l | $TR_COMMAND -d " "
-} # }}}
-
-ssh_bind_has_settings() { # {{{
-  if [ "$(ssh_bind_count_settings)" == "0" ] ; then
-    echo "Can't find settings for $NAME"
-    exit 3
-  fi
-} # }}}
-
-ssh_bind_get_forwardings() { # {{{
-  $GREP_COMMAND -RH "^\($ALLOWED\)" $SETTINGS_PATH | $SED_COMMAND -n "s/$PATTERN/\3 \2/p" | $SORT_COMMAND -u | $SED_COMMAND 's/^:socks:/-D /g' | $SED_COMMAND 's/^:local:/-L /g' | $SED_COMMAND 's/^:remote:/-R /g'
-} # }}}
-
-ssh_bind_get_forwardings_pattern() { # {{{
-  ssh_bind_get_forwardings | $AWK_COMMAND --field-separator "\n" '{print "\\("$1"\\)\\|"}' | $TR_COMMAND -d "\n" | $SED_COMMAND 's/\\|$//g'
-} # }}}
-
-ssh_bind_show_command_create_ssh_forwarding() { # {{{
-  echo "$COMMAND $COMMAND_OPTIONS $1"
-} # }}}
-
-ssh_bind_create_ssh_forwarding() { # {{{
-  $COMMAND $COMMAND_OPTIONS $1
-} # }}}
-
-ssh_bind_get_ps() { # {{{
-  $PS_COMMAND ax | $GREP_COMMAND "$COMMAND $COMMAND_OPTIONS " | $GREP_COMMAND -v "$GREP_COMMAND" | $GREP_COMMAND "$(ssh_bind_get_forwardings_pattern)"
-} # }}}
-
-ssh_bind_count_ps() { # {{{
-  ssh_bind_get_ps | $WC_COMMAND -l | $TR_COMMAND -d " "
-} # }}}
-
-ssh_bind_get_ps_list() { # {{{
-  ssh_bind_get_ps | $AWK_COMMAND '{print $1}' | $TR_COMMAND "\n" " "
-} # }}}
+  # Functions
+  . "$SCRIPT_PATH/functions"
+# }}}
 
 ssh_bind_start() { #{{{
   ssh_bind_is_root
@@ -166,9 +93,7 @@ case "$1" in # {{{
     ssh_bind_stop
     ;;
   restart)
-    ssh_bind_stop
-    sleep 1
-    ssh_bind_start
+    ssh_bind_stop && sleep 1 && ssh_bind_start
     ;;
   status)
     ssh_bind_status
@@ -185,4 +110,4 @@ case "$1" in # {{{
     ;;
 esac # }}}
 
-exit 0
+exit $EXIT_STATUS_OK

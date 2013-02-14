@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#
+# @author  Artem Teleshev
+# @email   artem.teleshev@gmail.com
+# @site    http//phpsw.net
+
+EXIT_STATUS_OK=0
+EXIT_STATUS_NOT_HAVE_CONFIGURED_SETTINGS=1
+
+STATUS_OK="OK"
+STATUS_ERROR="Error"
+
+COMMAND=$(which ssh)
+COMMAND_OPTIONS="-f -n -N -C"
+
+# ssh
+# -f | Requests ssh to go to background just before command execution. 
+# -n | Redirects stdin from /dev/null (actually, prevents reading from stdin).  This must be used when ssh is run in the background.
+# -N | Do not execute a remote command.
+# -C | Compression of all data.
+
+if [ ! -f $COMMAND ] ; then
+  echo "Can't find SSH Client. You need to install this package."
+  exit $EXIT_STATUS_NOT_HAVE_CONFIGURED_SETTINGS
+fi
+
+LS_COMMAND=$(which ls)
+PS_COMMAND=$(which ps)
+TR_COMMAND=$(which tr)
+WC_COMMAND=$(which wc)
+CAT_COMMAND=$(which cat)
+AWK_COMMAND=$(which awk)
+SED_COMMAND=$(which sed)
+GREP_COMMAND=$(which grep)
+KILL_COMMAND=$(which kill)
+SORT_COMMAND=$(which sort)
+
+ALLOWED='socks\|local\|remote'
+PATTERN='^\/\?\([^\/]\+\/\)*\([^\:]\+\)*\(.*\)*$'
+
