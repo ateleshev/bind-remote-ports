@@ -106,7 +106,7 @@ case "$1" in # {{{
     ;;
   *)
     echo "Usage: $NAME {start|stop|restart|status|settings|help}"
-    exit 4
+    exit $EXIT_STATUS_ERROR
     ;;
 esac # }}}
 

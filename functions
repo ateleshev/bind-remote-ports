@@ -7,7 +7,7 @@
 ssh_bind_is_root()  { # {{{
   if [ "$UID" != 0 ] ; then
     echo "Only super user have access to this action"
-    exit 2
+    exit $EXIT_STATUS_ERROR
   fi
 } # }}}
 
@@ -22,7 +22,7 @@ ssh_bind_count_settings() { # {{{
 ssh_bind_has_settings() { # {{{
   if [ "$(ssh_bind_count_settings)" == "0" ] ; then
     echo "Can't find settings for $NAME"
-    exit 3
+    exit $EXIT_STATUS_ERROR
   fi
 } # }}}
 

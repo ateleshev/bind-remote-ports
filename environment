@@ -8,7 +8,7 @@
 FS="\n"
 
 EXIT_STATUS_OK=0
-EXIT_STATUS_NOT_HAVE_CONFIGURED_SETTINGS=1
+EXIT_STATUS_ERROR=-1
 
 STATUS_OK="OK"
 STATUS_ERROR="Error"
@@ -24,7 +24,7 @@ COMMAND_OPTIONS="-f -n -N -C"
 
 if [ ! -f $COMMAND ] ; then
   echo "Can't find SSH Client. You need to install this package."
-  exit $EXIT_STATUS_NOT_HAVE_CONFIGURED_SETTINGS
+  exit $EXIT_STATUS_ERROR
 fi
 
 LS_COMMAND=$(which ls)
